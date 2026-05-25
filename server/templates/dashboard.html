@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="header">
+    <div>
+        <h1 class="page-title">Community Energy Hub</h1>
+        <p style="color: var(--text-secondary); margin-top: 0.25rem;">Monitor your solar generation and trade surplus grid power.</p>
+    </div>
+    
+    <div class="top-bar-stats">
+        <div class="top-stat-card">
+            <span class="top-stat-label">Grid Node Connection</span>
+            <span id="dash-house-status" class="status-badge offline">Checking...</span>
+        </div>
+    </div>
+</div>
+
+<!-- Main Telemetry and Control Grid -->
+<div class="grid-cols-2">
+    
+    <!-- Left Hero Card: Live Battery SoC & Net Power -->
+    <div class="card telemetry-hero">
+        <div class="flex-column" style="gap: 1.5rem; width: 55%;">
+            <div>
+                <span style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 600;">Active House Node</span>
+                <h2 style="font-size: 1.6rem; font-weight: 700; margin-top: 0.25rem;">Node Telemetry</h2>
+            </div>
+            
+            <div class="flex-column" style="gap: 0.75rem;">
+                <div class="flex-between">
+                    <span style="color: var(--text-secondary);">Battery Voltage</span>
+                    <strong id="dash-voltage-value">0.00V</strong>
+                </div>
+                <div class="flex-between">
+                    <span style="color: var(--text-secondary);">Battery Current</span>
+                    <strong id="dash-current-value">0.00A</strong>
+                </div>
+                <div class="flex-between">
+                    <span style="color: var(--text-secondary);">Generation / Load</span>
+                    <strong id="dash-power-value" class="color-power">0.0W</strong>
+                </div>
+                <div class="flex-between">
+                    <span style="color: var(--text-secondary);">Available Surplus</span>
+                    <strong id="dash-surplus-value" class="color-surplus">0.0Wh</strong>
+                </div>
+            </div>
+        </div>
+
+        <div class="battery-display">
+            <div class="battery-ring-container">
+                <svg width="140" height="140" viewBox="0 0 140 140" style="transform: rotate(-90deg);">
+                    <!-- Background Circle -->
+                    <circle cx="70" cy="70" r="58" stroke="rgba(255,255,255,0.03)" stroke-width="8" fill="transparent"/>
+                    <!-- Interactive Ring -->
+                    <circle id="battery-ring" cx="70" cy="70" r="58" stroke="#10b981" stroke-width="8" fill="transparent" 
+                            stroke-dasharray="364.4" stroke-dashoffset="364.4" stroke-linecap="round" 
+                            style="transition: stroke-dashoffset 0.8s ease, stroke 0.5s;"/>
+                </svg>
+                <div id="dash-soc-value" class="battery-percentage">0%</div>
+            </div>
+            <span style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 600; text-transform: uppercase;">Battery Charge (SoC)</span>
+        </div>
+    </div>
+
+    <!-- Right Card: Quick P2P Trade Controls -->
+    <div class="card flex-column" style="justify-content: space-between;">
+        <div>
+            <h3 style="font-size: 1.2rem; font-weight: 600; margin-bottom: 0.75rem;">Smart Grid Actions</h3>
+            <p style="color: var(--text-secondary); font-size: 0.95rem; line-height: 1.4; margin-bottom: 1.5rem;">
+                Decide what to do with your generated energy. Sell extra power directly to the community, or buy clean energy from neighbors if your battery drops low.
+            </p>
+        </div>
+
+        <div class="flex-gap-1">
+            <a href="{{ url_for('seller') }}" style="flex: 1; text-decoration: none;">
+                <button class="btn-primary" style="background: var(--gradient-success); box-shadow: none;">
+                    List Solar for Sale
+                </button>
+            </a>
+            <a href="{{ url_for('marketplace') }}" style="flex: 1; text-decoration: none;">
+                <button class="btn-primary">
+                    Enter Marketplace
+                </button>
+            </a>
+        </div>
+        
+        <!-- Animated Energy Flow Container (Visible during transferring state) -->
+        <div id="dash-energy-flow-visual" style="display: none; margin-top: 1.5rem;">
+            <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--accent-cyan); font-weight: 600; margin-bottom: 0.25rem;">
+                <span>Active P2P Energy Transfer Engaged...</span>
+                <span>Relay Closed [ON]</span>
+            </div>
+            <div class="energy-flow-visual">
+                <div class="energy-flow-bar"></div>
+            </div>
+        </div>
+    </div>
+    
+</div>
+
+<!-- Bottom Section: Active Ledger Matches -->
+<div class="card">
+    <div class="card-title">
+        <span>Live Marketplace Trades</span>
+        <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: normal; text-transform: uppercase;">Updated live</span>
+    </div>
+    <div class="data-table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Tx ID</th>
+                    <th>Seller Node</th>
+                    <th>Buyer Node</th>
+                    <th>Energy Amount</th>
+                    <th>Trade Status</th>
+                </tr>
+            </thead>
+            <tbody id="dash-tx-table-body">
+                <tr>
+                    <td colspan="5" style="text-align: center; color: var(--text-muted);">Polling grid ledger...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

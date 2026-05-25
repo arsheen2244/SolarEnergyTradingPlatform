@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="header">
+    <div>
+        <h1 class="page-title">Grid Marketplace</h1>
+        <p style="color: var(--text-secondary); margin-top: 0.25rem;">Browse energy listings or request power from neighbors.</p>
+    </div>
+</div>
+
+<div class="grid-cols-3">
+    <!-- Left 1/3: Buy Bid Request Form -->
+    <div class="card" style="height: fit-content;">
+        <h3 style="font-size: 1.2rem; font-weight: 600; margin-bottom: 1.25rem;">Place Buy Request</h3>
+        
+        <form id="buy-request-form">
+            <div class="form-group">
+                <label for="buy-energy">Required Energy (Wh)</label>
+                <input type="number" id="buy-energy" class="form-input" min="1" max="5000" placeholder="e.g. 350" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="buy-max-price">Max Bid Price (Tokens/Wh)</label>
+                <input type="number" id="buy-max-price" class="form-input" step="0.01" min="0.01" max="10" placeholder="e.g. 0.45" required>
+                <small style="color: var(--text-muted); margin-top: 0.25rem; display: block;">We will auto-match with the cheapest seller below your bid.</small>
+            </div>
+            
+            <div style="background: rgba(59, 130, 246, 0.05); padding: 1rem; border-radius: var(--radius-sm); border: 1px dashed rgba(59, 130, 246, 0.2); margin-bottom: 1.5rem;">
+                <div class="flex-between" style="font-size: 0.9rem; color: var(--accent-cyan);">
+                    <span>Maximum Cost:</span>
+                    <strong id="cost-estimation">0.00 tokens</strong>
+                </div>
+            </div>
+            
+            <button type="submit" class="btn-primary">Post Request</button>
+        </form>
+    </div>
+
+    <!-- Right 2/3: Available Listings & Requests Tables -->
+    <div class="flex-column" style="grid-column: span 2; gap: 2rem;">
+        
+        <!-- Table: Energy Available for Purchase -->
+        <div class="card">
+            <div class="card-title">
+                <span>Energy Available for Purchase</span>
+                <span class="status-badge online" style="font-size: 0.7rem;">Sellers Online</span>
+            </div>
+            <div class="data-table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Seller House</th>
+                            <th>Available Energy</th>
+                            <th>Rate</th>
+                            <th>Total Cost</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="market-listings-body">
+                        <tr>
+                            <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">Loading active listings...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Table: Open Buyer Bids -->
+        <div class="card">
+            <div class="card-title">
+                <span>Active Community Bids</span>
+                <span class="status-badge initiated" style="font-size: 0.7rem;">Pending Matches</span>
+            </div>
+            <div class="data-table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Buyer House</th>
+                            <th>Requested Energy</th>
+                            <th>Max Bid Rate</th>
+                            <th>Match Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="market-requests-body">
+                        <tr>
+                            <td colspan="4" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">Loading open bids...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    // Live price calculation helper
+    const buyEnergyInput = document.getElementById('buy-energy');
+    const buyPriceInput = document.getElementById('buy-max-price');
+    const costEl = document.getElementById('cost-estimation');
+    
+    function updateCost() {
+        const energy = parseFloat(buyEnergyInput.value) || 0;
+        const price = parseFloat(buyPriceInput.value) || 0;
+        costEl.textContent = `${(energy * price).toFixed(2)} tokens`;
+    }
+    
+    buyEnergyInput.addEventListener('input', updateCost);
+    buyPriceInput.addEventListener('input', updateCost);
+</script>
+{% endblock %}

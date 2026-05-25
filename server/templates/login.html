@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>URRJA - Login / Register Node</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .tab-btn {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid transparent;
+            transition: var(--transition-fast);
+        }
+        .tab-btn.active {
+            color: var(--accent-cyan);
+            border-bottom-color: var(--accent-cyan);
+        }
+        .form-toggle-container {
+            display: flex;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body style="background-color: var(--bg-primary);">
+
+    <!-- Flash Messages / Toasts -->
+    <div id="toast-tray" class="flash-messages">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash-message {{ category }}">
+                        <span>{{ message }}</span>
+                        <button class="flash-close" onclick="this.parentElement.remove()">&times;</button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+
+    <div class="auth-wrapper">
+        <div class="auth-card">
+            
+            <div style="display: flex; align-items: center; justify-content: center; gap: 0.75rem; margin-bottom: 1rem;">
+                <div class="brand-icon">U</div>
+                <h1 style="font-size: 2rem; font-weight: 800; background: var(--gradient-primary); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">URRJA</h1>
+            </div>
+            
+            <p class="auth-subtitle">Gated-Community Peer-to-Peer Solar Energy Trading</p>
+            
+            <div class="form-toggle-container">
+                <button id="btn-show-login" class="tab-btn active" onclick="toggleForm('login')">Sign In</button>
+                <button id="btn-show-signup" class="tab-btn" onclick="toggleForm('signup')">Register Node</button>
+            </div>
+
+            <!-- Login Form -->
+            <form id="login-form" action="{{ url_for('login_page') }}" method="POST">
+                <div class="form-group">
+                    <label for="login-username">Username</label>
+                    <input type="text" id="login-username" name="username" class="form-input" placeholder="Enter username" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="login-password">Password</label>
+                    <input type="password" id="login-password" name="password" class="form-input" placeholder="Enter password" required>
+                </div>
+                
+                <button type="submit" class="btn-primary" style="margin-top: 1rem;">Sign In</button>
+            </form>
+
+            <!-- Signup Form (Hidden initially) -->
+            <form id="signup-form" action="{{ url_for('signup_action') }}" method="POST" style="display: none;">
+                <div class="form-group">
+                    <label for="signup-username">Username</label>
+                    <input type="text" id="signup-username" name="username" class="form-input" placeholder="Create username" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="signup-email">Email Address</label>
+                    <input type="email" id="signup-email" name="email" class="form-input" placeholder="yourname@domain.com">
+                </div>
+                
+                <div class="form-group">
+                    <label for="signup-password">Password</label>
+                    <input type="password" id="signup-password" name="password" class="form-input" placeholder="Create password" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="signup-house">House Name / Number</label>
+                    <input type="text" id="signup-house" name="house_name" class="form-input" placeholder="e.g. Villa 402, Block C" required>
+                </div>
+                
+                <div style="background: rgba(0, 242, 254, 0.05); padding: 0.75rem; border-radius: var(--radius-sm); border: 1px dashed var(--border-glow); margin-bottom: 1.25rem;">
+                    <p style="font-size: 0.75rem; color: var(--accent-cyan); line-height: 1.3;">
+                        <strong>Note:</strong> Registering will automatically generate a custom device token for your solar monitoring node's ESP32 configuration.
+                    </p>
+                </div>
+                
+                <button type="submit" class="btn-primary">Register & Generate Token</button>
+            </form>
+            
+        </div>
+    </div>
+
+    <script>
+        function toggleForm(formType) {
+            const loginForm = document.getElementById('login-form');
+            const signupForm = document.getElementById('signup-form');
+            const loginBtn = document.getElementById('btn-show-login');
+            const signupBtn = document.getElementById('btn-show-signup');
+            
+            if (formType === 'login') {
+                loginForm.style.display = 'block';
+                signupForm.style.display = 'none';
+                loginBtn.classList.add('active');
+                signupBtn.classList.remove('active');
+            } else {
+                loginForm.style.display = 'none';
+                signupForm.style.display = 'block';
+                loginBtn.classList.remove('active');
+                signupBtn.classList.add('active');
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="header">
+    <div>
+        <h1 class="page-title">Admin Grid Console</h1>
+        <p style="color: var(--text-secondary); margin-top: 0.25rem;">Global statistics, system health metrics, and active server/node logs.</p>
+    </div>
+</div>
+
+<!-- Admin Stats Cards Grid -->
+<div class="grid-cols-3">
+    
+    <div class="card flex-column" style="gap: 0.5rem;">
+        <span style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 600;">Community Users</span>
+        <span id="stat-total-users" style="font-size: 2.2rem; font-weight: 700; color: var(--accent-cyan);">0</span>
+    </div>
+
+    <div class="card flex-column" style="gap: 0.5rem;">
+        <span style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 600;">Active Houses</span>
+        <span id="stat-total-houses" style="font-size: 2.2rem; font-weight: 700; color: var(--accent-cyan);">0</span>
+    </div>
+
+    <div class="card flex-column" style="gap: 0.5rem;">
+        <span style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 600;">Total Traded Volume</span>
+        <span id="stat-energy-traded" style="font-size: 2.2rem; font-weight: 700; color: var(--accent-green);">0 Wh</span>
+    </div>
+    
+    <div class="card flex-column" style="gap: 0.5rem;">
+        <span style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 600;">Token Volume Circulated</span>
+        <span id="stat-revenue" style="font-size: 2.2rem; font-weight: 700; color: var(--accent-green);">0 tokens</span>
+    </div>
+
+    <div class="card flex-column" style="gap: 0.5rem;">
+        <span style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 600;">Active Matches (Transferring)</span>
+        <span id="stat-active-trades" style="font-size: 2.2rem; font-weight: 700; color: var(--accent-orange);">0</span>
+    </div>
+
+    <div class="card flex-column" style="gap: 0.5rem;">
+        <span style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 600;">Settled Transactions</span>
+        <span id="stat-completed-trades" style="font-size: 2.2rem; font-weight: 700; color: var(--accent-cyan);">0</span>
+    </div>
+    
+</div>
+
+<!-- Admin Terminal Logs Console -->
+<div class="card">
+    <div class="card-title">
+        <span>System Log & Telemetry Output</span>
+        <span class="status-badge online" style="animation: pulseGlow 1.5s infinite alternate; font-size: 0.75rem;">Live Terminal</span>
+    </div>
+    <div id="system-logs-container" class="log-box">
+        <div class="log-entry">Booting console...</div>
+    </div>
+</div>
+{% endblock %}

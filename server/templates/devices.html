@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="header">
+    <div>
+        <h1 class="page-title">Community Grid Node Monitor</h1>
+        <p style="color: var(--text-secondary); margin-top: 0.25rem;">Live view of all house nodes connected to the local URRJA microgrid.</p>
+    </div>
+</div>
+
+<!-- Devices Card Container Grid -->
+<div id="devices-grid-container" class="grid-cols-3">
+    <div style="grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 3rem;">
+        Scanning local microgrid and loading node statistics...
+    </div>
+</div>
+{% endblock %}
