@@ -1,182 +1,246 @@
-# URRJA: Gated-Community Peer-to-Peer Solar Energy Trading Platform
+<div align="center">
 
-URRJA is a complete prototype software system designed to enable peer-to-peer (P2P) solar energy trading within a gated community. Each home is equipped with a solar energy node that monitors local generation, battery status, and available surplus. A central server (e.g., Raspberry Pi) hosts the community marketplace where residents can buy and sell energy dynamically.
+# ☀️ URRJA: Peer‑to‑Peer Solar Energy Trading
 
----
+**A neighbourhood marketplace for rooftop solar.**
+Each home in a gated community runs an ESP32 energy node. A Flask server matches surplus sellers with buyers, switches the transfer on, and settles the trade in community tokens.
 
-## 1. System Architecture
+![Python](https://img.shields.io/badge/Python-3.10+-3776AB?logo=python&logoColor=white)
+![Flask](https://img.shields.io/badge/Flask-3.x-000000?logo=flask&logoColor=white)
+![SQLite](https://img.shields.io/badge/SQLite-003B57?logo=sqlite&logoColor=white)
+![ESP32](https://img.shields.io/badge/ESP32-WROOM--DA-E7352C?logo=espressif&logoColor=white)
+![Arduino](https://img.shields.io/badge/Arduino-C++-00979D?logo=arduino&logoColor=white)
+![JavaScript](https://img.shields.io/badge/Vanilla%20JS-F7DF1E?logo=javascript&logoColor=black)
+![IoT](https://img.shields.io/badge/IoT-prototype-orange)
 
-```
-                                  [ COMMUNITY SUBNET / HOTSPOT ]
-                                                 |
-         +---------------------------------------+---------------------------------------+
-         |                                       |                                       |
-  +------+------+                         +------+------+                         +------+------+
-  |    Node A   | (Seller)                |    Node B   | (Buyer)                 |    Server   | (Pi or PC)
-  |  ESP32-WROOM |                         |  ESP32-WROOM |                         |  Flask App  |
-  +------+------+                         +------+------+                         +------+------+
-         |                                       |                                       |
-         v (HTTP Telemetry)                      v (HTTP Telemetry)                      v (REST API)
-   Calculates surplus                      Requests energy                        Matches Listings
-   Closes Relay [ON]                       Draws energy                           Settles ledger
-```
+</div>
 
 ---
 
-## 2. Hardware Design & Wiring Overview
+## ✨ Highlights
 
-### Suggested Component List
-1. **Microcontroller**: ESP32-WROOM-DA (Dual-Antenna module for reliable outdoor range)
-2. **Current/Voltage Sensor**: Adafruit INA219 High-Side I2C Current Sensor (ideal for low-voltage batteries up to 26V, 3.2A)
-3. **Actuator**: 5V Relay module or Opto-isolated N-Channel MOSFET load switch
-4. **Indicators**: 3x Status LEDs (Wi-Fi, Active Trade, System Error)
-5. **Circuit Protection**: 5A Inline fuse and optocoupler for signal isolation
+- ⚡ **Automated P2P matching engine**: cheapest listings meet the highest bids first, with partial fills, a self‑trade block and buyer balance checks
+- 📡 **ESP32 smart nodes** read battery voltage, current and state of charge from an INA219 sensor, POST telemetry over HTTP, and close a relay while a trade is active
+- 🔁 **Trade lifecycle** `initiated → transferring → completed`, driven by node telemetry, with token settlement on completion
+- 📊 **Seven‑page web app**: dashboard with a state‑of‑charge dial, seller listings, marketplace, device monitor, ledger and admin console
+- 🧪 **No hardware needed to try it**: `simulate_node.py` stands in for an ESP32, and `SIMULATION_MODE` fakes sensor readings on a real board
 
-### Wiring Diagram (Node Level)
+## 🏗️ System Architecture
 
+```mermaid
+flowchart TB
+    subgraph Homes["🏘️ Gated community Wi‑Fi / hotspot"]
+        direction LR
+        A["🏠 Node A · Seller<br/>ESP32 + INA219 + relay"]
+        B["🏠 Node B · Buyer<br/>ESP32 + INA219 + relay"]
+        S["🐍 simulate_node.py<br/>(virtual node)"]
+    end
+
+    subgraph Server["🖥️ Community server (Raspberry Pi / PC)"]
+        API["Flask app<br/>REST API + Jinja pages"]
+        ME["⚙️ Matching engine<br/>match_listings_and_requests()"]
+        DB[("SQLite · urrja.db")]
+        API <--> ME
+        API <--> DB
+        ME <--> DB
+    end
+
+    A -- "POST /api/node/telemetry<br/>(V, I, P, SoC, surplus)" --> API
+    B -- "POST /api/node/telemetry" --> API
+    S -- "POST /api/node/telemetry" --> API
+    API -- "response: trade state →<br/>close / open relay" --> A
+    API -- "response" --> B
+
+    R(["👩 Residents · 🛠️ Admin<br/>browser"]) <-- "HTML + JS polling" --> API
 ```
-             +---------------------------------------+
-             |            ESP32-WROOM-DA             |
-             |                                       |
-             |  GND  SDA(21)  SCL(22)  IO25  IO26  IO27|
-             +---+------+-------+-------+-----+-----+
-                 |      |       |       |     |     |
-                 |      |       |       |     |     +--> [RED LED] (Error Indicator)
-                 |      |       |       |     +--------> [GRN LED] (Trade Active)
-                 |      |       |       +--------------> [RELAY IN] (Simulated Load Switch)
-                 |      |       |
-                 |      |       +---------------+
-                 |      +-------------+         |
-                 v                    v         v
-             +-------+            +-------------+---+
-             |  GND  |            |   SDA      SCL  |
-             |       |            |                 |
-             | SOLAR |            |     INA219      |
-             | BAT   |            |  Current Sensor |
-             | LOOP  |            | (Vin+      Vin-)|
-             +---+---+            +---+---------+---+
-                 |                    |         |
-     (GND) <-----+                    v         v
-                                 (From Solar)  (To Battery + Load)
+
+## 🔄 Trade Lifecycle
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Seller as Seller (house 1)
+    actor Buyer as Buyer (house 2)
+    participant API as Flask server
+    participant ME as Matching engine
+    participant NodeA as Seller node
+    participant NodeB as Buyer node
+
+    Seller->>API: POST /api/listings (500 Wh @ 0.40)
+    Buyer->>API: POST /api/buy_requests (500 Wh, max 0.45)
+    API->>ME: run matching
+    ME->>ME: price 0.40 ≤ 0.45 ✓ · balance ✓ · not self ✓
+    ME-->>API: transaction INITIATED
+    NodeA->>API: telemetry
+    API-->>NodeA: start transfer → relay ON, green LED
+    Note over API: status → TRANSFERRING
+    loop each telemetry tick
+        NodeA->>API: telemetry
+        NodeB->>API: telemetry
+    end
+    API->>API: duration elapsed → settle tokens<br/>buyer −200 · seller +200
+    Note over API: status → COMPLETED, houses back ONLINE
 ```
 
-| ESP32 Pin | Component Pin | Description |
+```mermaid
+stateDiagram-v2
+    [*] --> initiated: listing ⨯ request matched
+    initiated --> transferring: seller node checks in
+    transferring --> completed: transfer duration elapsed<br/>tokens settled
+    completed --> [*]
+```
+
+### Matching rules
+
+| # | Rule |
+|:-:|------|
+| 1 | Listings are sorted **cheapest first**, buy requests **highest bid first**, then oldest first (price–time priority) |
+| 2 | A house can't trade with itself |
+| 3 | A trade happens only when `seller price ≤ buyer max price`, and it settles at the **seller's price** |
+| 4 | Quantity = `min(remaining listing, remaining request)`, so partial fills keep the leftover open |
+| 5 | If the buyer can't afford the trade, the request is **cancelled** and a warning is logged |
+
+## 🗄️ Data Model
+
+```mermaid
+erDiagram
+    USERS ||--o{ HOUSES : owns
+    HOUSES ||--o{ ENERGY_READINGS : reports
+    HOUSES ||--o{ LISTINGS : sells
+    HOUSES ||--o{ BUY_REQUESTS : bids
+    LISTINGS ||--o{ TRANSACTIONS : fills
+    BUY_REQUESTS ||--o{ TRANSACTIONS : fills
+
+    USERS {
+        int id PK
+        text username
+        text password_hash
+        text role
+        real balance
+    }
+    HOUSES {
+        int id PK
+        text house_name
+        text device_token
+        text status
+        real battery_capacity
+    }
+    ENERGY_READINGS {
+        real battery_voltage
+        real battery_current
+        real power
+        real battery_soc
+        real available_surplus
+    }
+    LISTINGS {
+        real energy_amount_wh
+        real remaining_energy_wh
+        real price_per_wh
+        text status
+    }
+    BUY_REQUESTS {
+        real energy_amount_wh
+        real remaining_energy_wh
+        real max_price_per_wh
+        text status
+    }
+    TRANSACTIONS {
+        real energy_amount_wh
+        real total_price
+        text status
+        datetime started_at
+        datetime completed_at
+    }
+```
+
+A separate `logs` table records server and node events for the admin console.
+
+## 🧰 Tech Stack
+
+| Layer | Technology |
+|------|-----------|
+| Backend | Python 3.10+, Flask, Werkzeug (password hashing), SQLite |
+| Frontend | Jinja2 templates, hand‑written CSS (custom properties, transitions), vanilla JavaScript (REST + polling) |
+| Firmware | Arduino C++ on ESP32 (core v2.x / v3.x), `HTTPClient`, ArduinoJson, Adafruit INA219 |
+| Hardware | ESP32‑WROOM‑DA, INA219 high‑side current sensor, 5 V relay / MOSFET switch, status LEDs, 5 A fuse |
+| Simulation | `simulate_node.py` (Python `requests`) |
+
+## 🔌 Hardware
+
+| ESP32 pin | Connects to | Purpose |
 |---|---|---|
-| **GND** | GND | Common ground connection |
-| **I2C SDA (21)** | INA219 SDA | I2C Data Line |
-| **I2C SCL (22)** | INA219 SCL | I2C Clock Line |
-| **GPIO 25** | Relay IN | Actuates simulated transfer load |
-| **GPIO 2** | Built-in LED | Wi-Fi status indicator (Blinking=Connecting, Solid=Online) |
-| **GPIO 26** | Green LED | Trade status indicator (Solid=Simulated Transfer active) |
-| **GPIO 27** | Red LED | Error indicator (Solid=Sensor/Server connection loss) |
+| **GND** | GND | Common ground |
+| **GPIO 21 (SDA)** | INA219 SDA | I²C data |
+| **GPIO 22 (SCL)** | INA219 SCL | I²C clock |
+| **GPIO 25** | Relay IN | Switches the simulated transfer load |
+| **GPIO 2** | Built‑in LED | Wi‑Fi (blinking = connecting, solid = online) |
+| **GPIO 26** | Green LED | Trade active |
+| **GPIO 27** | Red LED | Sensor or server error |
 
----
-
-## 3. Software Stack & Structure
-
-- **Backend**: Python 3.10+, Flask framework, SQLite
-- **Frontend**: HTML5, Vanilla CSS3 (custom variables, modern transitions), Vanilla JavaScript (REST requests, real-time polling)
-- **Firmware**: Arduino C++ (Compatible with ESP32 Arduino Core v2.x/v3.x)
-
-```
-UrrjaLocalEnergyMarket/
-│
-├── esp32_firmware/
-│   └── esp32_firmware.ino         # ESP32 C++ sketch code
-│
-└── server/
-    ├── app.py                     # Flask server core, P2P matching & API routing
-    ├── database.py                # Database setup, table models, and seed values
-    ├── urrja.db                   # SQLite database (generated automatically)
-    ├── simulate_node.py           # Mock node client utility script
-    │
-    ├── static/
-    │   ├── css/
-    │   │   └── style.css          # Design system, variables, layouts, and animations
-    │   └── js/
-    │       └── main.js            # Frontend logic: polling, calculations, forms
-    │
-    └── templates/
-        ├── base.html              # Layout template (nav menu, profile widget)
-        ├── login.html             # Login and community registration form
-        ├── dashboard.html         # User overview telemetry & SoC dial
-        ├── seller.html            # Solar sale listing register
-        ├── marketplace.html       # Market table, listings matching, instant buy
-        ├── devices.html           # Live status of all community nodes
-        ├── transactions.html      # Community ledger records
-        └── admin.html             # Global stats and console logs
+```mermaid
+flowchart LR
+    PV[☀️ Solar panel] --> INA[INA219<br/>Vin+ → Vin−]
+    INA --> BAT[🔋 Battery + load]
+    INA <-- "I²C (21/22)" --> ESP[ESP32]
+    ESP -- GPIO25 --> REL[Relay / MOSFET] --> DL[Dummy DC load]
+    ESP -- GPIO26 --> G((🟢))
+    ESP -- GPIO27 --> Rr((🔴))
 ```
 
----
+## 🚀 Getting Started
 
-## 4. Setup and Run Guide
+### 1. Run the server
 
-### Step 1: Install Server Dependencies
-On your Raspberry Pi or local PC, install the required dependencies:
 ```bash
+git clone https://github.com/arsheen2244/SolarEnergyTradingPlatform.git
+cd SolarEnergyTradingPlatform/server
 pip install flask requests werkzeug
+python database.py      # optional: creates and seeds urrja.db (also runs on startup)
+python app.py           # serves http://0.0.0.0:5000
 ```
 
-### Step 2: Initialize Database and Start Server
-Initialize the database and launch the Flask server:
-```bash
-# Go to server directory
-cd server
+### 2. Flash an ESP32 (optional)
 
-# Initialize database (optional, will auto-run on app start)
-python database.py
+1. In the Arduino IDE, install **Adafruit INA219** and **ArduinoJson**.
+2. Open `esp32_firmware/esp32_firmware.ino` and set `ssid`, `password` and `serverUrl` (your server's LAN IP).
+3. Without sensors, keep `#define SIMULATION_MODE 1`. Then flash the board.
 
-# Launch the Flask server
-python app.py
+### 3. Try a trade without hardware
+
+| Seeded account | Username | Password |
+|--------------|----------|----------|
+| Admin | `admin` | `admin123` |
+| Home owner | `house1_owner` | `urrja123` |
+
+1. Run `python simulate_node.py` (it uses the seeded `token_node_101`) or `python simulate_node.py <device_token>` for a node you registered.
+2. As `house1_owner`, list **500 Wh @ 0.40 tokens/Wh**.
+3. In an incognito window, as `house2_owner`, bid **500 Wh, max 0.45 tokens/Wh**.
+4. The simulator prints `[ACTIVE TRANSFER]`. Open `/admin` to watch `initiated → transferring → completed` and the wallet balances settle.
+
+> These are local demo accounts. Change them before running the server on any shared network.
+
+## 📁 Project Structure
+
 ```
-By default, the server runs on `http://0.0.0.0:5000` (listening on all local interfaces).
+SolarEnergyTradingPlatform/
+├── esp32_firmware/
+│   └── esp32_firmware.ino     # sensor read · telemetry POST · relay/LED control
+└── server/
+    ├── app.py                 # Flask routes, REST API, matching engine, settlement
+    ├── database.py            # schema + seed data
+    ├── simulate_node.py       # virtual ESP32 node
+    ├── static/{css,js}/       # design system + polling/forms
+    └── templates/             # base, login, dashboard, seller, marketplace,
+                               # devices, transactions, admin
+```
 
-### Step 3: Flash the ESP32 Node
-1. Open the Arduino IDE.
-2. Install the following libraries via the Library Manager (`Ctrl + Shift + I`):
-   - **Adafruit INA219**
-   - **ArduinoJson** (by Benoit Blanchon)
-3. Open `esp32_firmware/esp32_firmware.ino`.
-4. Update the Wi-Fi credentials (`ssid`, `password`) and the `serverUrl` (substitute your Pi/PC's local IP address).
-5. Compile and flash the code to your ESP32 module.
+## ⚠️ Safety & Limitations
 
-> [!TIP]
-> If testing without physical sensors, make sure `#define SIMULATION_MODE 1` is enabled at the top of the sketch.
+- This is a **low‑voltage prototype**. It never switches mains electricity (110/220 V AC).
+- The relay only drives a small DC dummy load (LED, fan, resistor) to show that a trade has started.
+- A real deployment would send this signal to a battery management system or a microgrid controller on a dedicated DC bus.
+- Tokens are an internal ledger, not real currency.
 
 ---
 
-## 5. Local Prototype Testing
-
-You can test the complete trading flow on your local PC using the Python simulator without needing physical hardware:
-
-1. **Start the Flask Server**: `python app.py`
-2. **Access the Dashboard**: Open `http://127.0.0.1:5000/` in your browser.
-   - Log in as the pre-seeded admin user:
-     - **Username**: `admin`
-     - **Password**: `admin123`
-   - Or log in as a pre-seeded house node owner:
-     - **Username**: `house1_owner`
-     - **Password**: `urrja123`
-3. **Register a New Node**:
-   - Go to `/login` and select "Register Node".
-   - Create a user (e.g. `house4`), define a house (e.g. `Villa 505`), and write down the generated **Device Token**.
-4. **Launch the Node Simulator**:
-   - Open a terminal and start the simulator representing your house:
-     ```bash
-     python simulate_node.py <device_token>
-     ```
-   - By default, running `python simulate_node.py` without arguments simulates the pre-seeded `token_node_101` (Smart Villa 101).
-5. **Create a Transaction**:
-   - Log in as `house1_owner` and post an energy listing: **500 Wh** @ **0.40 tokens/Wh**.
-   - Open an incognito browser window, log in as `house2_owner`, and place a matching purchase request on the Marketplace: **500 Wh** @ max price **0.45 tokens/Wh**.
-   - Observe the terminal console of the running `simulate_node.py` client: it will print `[ACTIVE TRANSFER]` and simulate closed relays immediately.
-   - Look at the Flask terminal or the Admin dashboard `http://127.0.0.1:5000/admin` to see the transaction transition from `initiated` $\rightarrow$ `transferring` $\rightarrow$ `completed`.
-   - Verify that token balances settle: `house1_owner` wallet increases and `house2_owner` wallet decreases.
-
----
-
-## 6. Safety & Prototype Limitations
-
-- **Grid Transfer Simulation**: This system is purely a software and low-voltage hardware prototype. It does **NOT** control or route mains electricity (110V/220V AC). 
-- **Relay/MOSFET Load Switching**: The relay on the ESP32 only switches a low-voltage DC load (e.g., an LED indicator, a small DC fan, or dummy load resistor) to visually confirm trade actuation safely.
-- **Microgrid Control**: In a physical community rollout, this control signal would command localized battery management systems (BMS) or smart grid controllers connected to a dedicated DC microgrid.
+<div align="center">Built by <a href="https://github.com/arsheen2244">Arsheen Inamdar</a></div>
